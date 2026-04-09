@@ -1,0 +1,60 @@
+name: Build & Deploy to ECR/ECS
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: mlops-lab/student-17    # 본인 번호로 변경
+  ECS_CLUSTER: mlops-lab-cluster
+  ECS_SERVICE: student-17-loan-api-service     # 본인 번호로 변경
+  ECS_TASK_DEFINITION: student-17-loan-api # 본인 번호로 변경
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # GitHub Actions가 AWS에 접속해서 하는 작업 
+    # -> ECR에 이미지를 빌드해서 푸시하고, ECS 서비스를 업데이트하는 일련의 과정을 정의합니다.
+    steps:
+      # 1. 코드 체크아웃
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. AWS 자격 증명 설정
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 3. ECR 로그인
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 4. Docker 이미지 빌드 & ECR Push
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+        id: build-image
+
+      # 5. ECS 서비스 업데이트 (새 이미지로 재배포)
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --desired-count 1 \
+            --force-new-deployment \
+            --region $AWS_REGION
+          echo "ECS 서비스 재배포 시작!"
