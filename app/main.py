@@ -43,7 +43,7 @@ app = FastAPI(
 
 @app.get('/')
 async def root():
-    return {"message": "환영합니다!!! 대출심사 사이트입니다. -- docker version"}
+    return {"message": "환영합니다!! 대출심사 사이트입니다. -- docker version"}
 
 @app.get('/health')
 async def health_check():

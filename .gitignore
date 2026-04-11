@@ -1,17 +1,8 @@
-# 환경 변수 (API 키 등 민감 정보)
-.env
-
-# Python
+mlartifacts/
+mlflow.db
+drift_report.html
 __pycache__/
 *.pyc
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# 로그
-*.log
+.git/
+data/
+docs/
